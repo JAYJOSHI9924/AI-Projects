@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CineMatch 🎬 | AI Movie Expert</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --red: #e50914;
+  --red-dark: #b0060f;
+  --gold: #ffbd00;
+  --bg: #0a0a0a;
+  --card: #141414;
+  --surface: #1a1a1a;
+  --text: #f0f0f0;
+  --muted: #8a9bb5;
+  --border: rgba(255,255,255,0.1);
+  --blue: #2563eb;
+  --purple: #7c3aed;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+body { background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+
+/* ──────────────────────────────────────────
+   AUTH OVERLAY
+────────────────────────────────────────── */
+#auth-overlay {
+  position:fixed; inset:0; z-index:9999;
+  background:linear-gradient(135deg,#0d0d1a 0%,#0a0a0a 50%,#1a0505 100%);
+  display:flex; align-items:center; justify-content:center;
+  transition:opacity 0.5s ease;
+}
+#auth-overlay::before {
+  content:'';
+  position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 20%, rgba(229,9,20,0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 300px at 80% 80%, rgba(37,99,235,0.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+#auth-overlay.hidden { opacity:0; pointer-events:none; }
+
+.auth-box {
+  position:relative; z-index:1;
+  background:rgba(20,20,20,0.9);
+  backdrop-filter:blur(24px);
+  padding:48px 44px;
+  border-radius:24px;
+  width:420px;
+  border:1px solid rgba(255,255,255,0.08);
+  box-shadow:0 30px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation:slideUp 0.5s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+.auth-logo {
+  font-family:'Bebas Neue'; font-size:38px; letter-spacing:4px; text-align:center;
+  margin-bottom:6px; color:white;
+}
+.auth-logo span { color:var(--red); }
+.auth-tagline { text-align:center; color:var(--muted); font-size:13px; margin-bottom:32px; }
+
+.tab-switcher {
+  display:flex; background:rgba(255,255,255,0.05);
+  border-radius:12px; padding:4px; margin-bottom:28px;
+}
+.tab-btn {
+  flex:1; padding:9px; border:none; border-radius:9px; cursor:pointer;
+  font-size:13px; font-weight:600; transition:all 0.25s; background:none; color:var(--muted);
+}
+.tab-btn.active { background:var(--red); color:white; }
+
+.form-group { margin-bottom:16px; position:relative; }
+.form-group label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:500; letter-spacing:0.5px; }
+.form-group input {
+  width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px; padding:12px 16px; color:white; font-size:14px; outline:none;
+  transition:border-color 0.25s, box-shadow 0.25s;
+}
+.form-group input:focus { border-color:rgba(229,9,20,0.6); box-shadow:0 0 0 3px rgba(229,9,20,0.1); }
+.form-group input::placeholder { color:rgba(255,255,255,0.25); }
+
+.auth-btn {
+  width:100%; padding:14px; border:none; border-radius:12px; cursor:pointer;
+  font-weight:700; font-size:15px; letter-spacing:0.5px;
+  background:linear-gradient(135deg,var(--red),#ff2a37);
+  color:white; transition:all 0.25s; margin-top:4px;
+  box-shadow:0 4px 20px rgba(229,9,20,0.35);
+}
+.auth-btn:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(229,9,20,0.5); }
+.auth-btn:active { transform:translateY(0); }
+
+.auth-divider { text-align:center; color:var(--muted); font-size:12px; margin:16px 0; position:relative; }
+.auth-divider::before,.auth-divider::after {
+  content:''; position:absolute; top:50%; width:40%; height:1px; background:var(--border);
+}
+.auth-divider::before { left:0; } .auth-divider::after { right:0; }
+
+.social-btn {
+  width:100%; padding:12px; border:1px solid var(--border); border-radius:12px; cursor:pointer;
+  background:rgba(255,255,255,0.04); color:var(--text); font-size:14px; font-weight:500;
+  display:flex; align-items:center; justify-content:center; gap:10px; transition:all 0.25s;
+}
+.social-btn:hover { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); }
+
+.auth-error { color:#ff6b6b; font-size:12px; margin-top:6px; display:none; }
+.auth-success { color:#4ade80; font-size:12px; margin-top:6px; display:none; }
+
+/* ──────────────────────────────────────────
+   NAVBAR
+────────────────────────────────────────── */
+#app { display:none; }
+nav {
+  position:sticky; top:0; z-index:100;
+  background:rgba(10,10,10,0.95); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 40px; height:68px;
+}
+.nav-logo { font-family:'Bebas Neue'; font-size:30px; letter-spacing:3px; color:white; }
+.nav-logo span { color:var(--red); }
+.nav-links { display:flex; align-items:center; gap:4px; }
+.nav-btn {
+  background:none; border:none; color:var(--muted); padding:8px 18px;
+  border-radius:8px; cursor:pointer; font-weight:500; font-size:13px; transition:all 0.25s;
+}
+.nav-btn:hover { color:white; background:rgba(255,255,255,0.06); }
+.nav-btn.active { color:white; background:rgba(229,9,20,0.15); font-weight:700; }
+
+.user-area { display:flex; align-items:center; gap:12px; }
+.user-chip {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,0.06); border:1px solid var(--border);
+  border-radius:100px; padding:5px 14px 5px 5px;
+}
+.user-avatar {
+  width:30px; height:30px; border-radius:50%;
+  background:linear-gradient(135deg,var(--red),#ff6b35);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:white;
+}
+.user-name { font-size:13px; font-weight:500; color:var(--text); }
+.logout-btn {
+  background:none; border:1px solid rgba(229,9,20,0.4); color:var(--red);
+  padding:6px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;
+  transition:all 0.25s;
+}
+.logout-btn:hover { background:rgba(229,9,20,0.1); }
+
+/* ──────────────────────────────────────────
+   MOVIES SECTION
+────────────────────────────────────────── */
+#movies-section { padding:40px; }
+
+.hero { text-align:center; padding:50px 0 40px; }
+.hero h1 { font-family:'Bebas Neue'; font-size:64px; letter-spacing:4px; line-height:1; }
+.hero h1 span { color:var(--red); }
+.hero p { color:var(--muted); margin-top:10px; font-size:15px; }
+
+/* Search bar */
+.search-bar {
+  max-width:520px; margin:28px auto 0;
+  display:flex; gap:10px;
+}
+.search-bar input {
+  flex:1; background:rgba(255,255,255,0.07); border:1px solid var(--border);
+  border-radius:12px; padding:12px 20px; color:white; font-size:14px; outline:none;
+  transition:border-color 0.25s;
+}
+.search-bar input:focus { border-color:rgba(229,9,20,0.5); }
+.search-bar input::placeholder { color:var(--muted); }
+.search-bar button {
+  padding:12px 22px; background:var(--red); border:none; border-radius:12px;
+  color:white; cursor:pointer; font-weight:600; font-size:14px; transition:all 0.25s;
+}
+.search-bar button:hover { background:var(--red-dark); }
+
+/* Category Filter */
+.filter-bar {
+  display:flex; flex-wrap:wrap; gap:10px;
+  max-width:1400px; margin:36px auto 30px; padding:0 0;
+  align-items:center;
+}
+.filter-label { color:var(--muted); font-size:13px; font-weight:600; margin-right:4px; }
+.filter-chip {
+  padding:8px 18px; border-radius:100px; border:1px solid var(--border);
+  background:rgba(255,255,255,0.04); color:var(--muted); cursor:pointer;
+  font-size:13px; font-weight:500; transition:all 0.22s; white-space:nowrap;
+}
+.filter-chip:hover { border-color:rgba(229,9,20,0.5); color:white; }
+.filter-chip.active {
+  background:var(--red); border-color:var(--red); color:white; font-weight:600;
+  box-shadow:0 4px 16px rgba(229,9,20,0.35);
+}
+
+/* Results count */
+.results-meta {
+  max-width:1400px; margin:0 auto 20px;
+  color:var(--muted); font-size:13px;
+}
+.results-meta span { color:white; font-weight:600; }
+
+/* Movie Grid */
+.grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:24px; max-width:1400px; margin:0 auto;
+}
+.card {
+  background:var(--card); border-radius:16px; overflow:hidden;
+  border:1px solid var(--border); transition:all 0.3s; position:relative; cursor:pointer;
+}
+.card:hover { transform:translateY(-8px); border-color:rgba(229,9,20,0.5); box-shadow:0 20px 50px rgba(0,0,0,0.6); }
+.card-img { width:100%; height:290px; object-fit:cover; display:block; }
+.card-badge {
+  position:absolute; top:10px; left:10px;
+  background:rgba(0,0,0,0.75); backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,0.15); border-radius:6px;
+  padding:3px 8px; font-size:11px; color:var(--muted); font-weight:500;
+}
+.card-info { padding:14px; }
+.card-title { font-weight:600; font-size:14px; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-meta { display:flex; justify-content:space-between; align-items:center; }
+.card-genre { font-size:11px; color:var(--muted); }
+.card-rating { font-size:12px; color:var(--gold); font-weight:600; }
+
+.empty-state {
+  text-align:center; padding:80px 20px; grid-column:1/-1; color:var(--muted);
+}
+.empty-state .icon { font-size:52px; margin-bottom:16px; }
+.empty-state p { font-size:16px; }
+
+/* Load more */
+.load-more-wrap { text-align:center; margin:40px 0; }
+.load-more-btn {
+  padding:13px 40px; border-radius:12px; border:1px solid var(--border);
+  background:rgba(255,255,255,0.04); color:white; cursor:pointer;
+  font-size:14px; font-weight:600; transition:all 0.25s;
+}
+.load-more-btn:hover { border-color:var(--red); background:rgba(229,9,20,0.08); }
+
+/* ──────────────────────────────────────────
+   CHAT SECTION
+────────────────────────────────────────── */
+#chat-section{
+
+  min-height:100vh;
+
+  display:flex;
+
+  justify-content:center;
+
+  align-items:center;
+
+  padding:120px 20px 40px;
+
+  background:
+  radial-gradient(circle at top left,
+  #132c66,
+  transparent 40%),
+
+  radial-gradient(circle at bottom right,
+  #3b1366,
+  transparent 40%),
+
+  #050505;
+}
+
+
+.chat-container{
+
+  width:100%;
+
+  max-width:420px;
+
+  height:700px;
+
+  background:rgba(30,35,55,0.95);
+
+  border:1px solid rgba(255,255,255,0.08);
+
+  border-radius:28px;
+
+  overflow:hidden;
+
+  display:flex;
+
+  flex-direction:column;
+
+  backdrop-filter:blur(20px);
+
+  box-shadow:
+  0 0 40px rgba(0,0,0,0.5);
+}
+
+.chat-header{
+
+  padding:22px;
+
+  display:flex;
+
+  align-items:center;
+
+  gap:15px;
+
+  border-bottom:
+  1px solid rgba(255,255,255,0.08);
+
+  background:
+  rgba(255,255,255,0.03);
+}
+
+.bot-avatar {
+  width:42px; height:42px; border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  display:flex; justify-content:center; align-items:center;
+  font-weight:700; font-size:15px; flex-shrink:0;
+}
+.online-dot { width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block; margin-right:4px; }
+.chat-box { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+.chat-box::-webkit-scrollbar { width:4px; }
+.chat-box::-webkit-scrollbar-track { background:transparent; }
+.chat-box::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:4px; }
+
+.message {
+  max-width:82%; padding:11px 15px; border-radius:18px;
+  font-size:14px; line-height:1.65; animation:fadeUp 0.3s ease;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.user { margin-left:auto; background:linear-gradient(135deg,#2563eb,#3b82f6); color:white; border-bottom-right-radius:5px; }
+.bot { background:rgba(255,255,255,0.07); color:var(--text); border-bottom-left-radius:5px; }
+
+.typing-indicator { display:flex; gap:4px; padding:4px 6px; }
+.typing-indicator span {
+  width:7px; height:7px; background:var(--muted); border-radius:50%;
+  animation:bounce 1.2s infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay:0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay:0.4s; }
+@keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+
+.chat-input{
+
+  flex:1;
+
+  padding:14px 18px;
+
+  border:none;
+
+  outline:none;
+
+  border-radius:14px;
+
+  background:#2a2f45;
+
+  color:white;
+
+  font-size:15px;
+}
+.chat-input input {
+  flex:1; background:rgba(255,255,255,0.07); border:1px solid var(--border);
+  border-radius:12px; padding:11px 16px; color:white; font-size:14px; outline:none;
+  transition:border-color 0.25s;
+}
+.chat-input input:focus { border-color:rgba(37,99,235,0.5); }
+.chat-input input::placeholder { color:rgba(255,255,255,0.3); }
+.send-btn{
+
+  width:52px;
+
+  border:none;
+
+  border-radius:14px;
+
+  cursor:pointer;
+
+  background:
+  linear-gradient(
+    135deg,
+    #6a5cff,
+    #4f46e5
+  );
+
+  color:white;
+
+  font-size:20px;
+
+  transition:0.3s;
+}
+
+.send-btn:hover{
+
+  transform:scale(1.05);
+}
+.send-btn:hover { transform:scale(1.08); }
+.chat-input-area{
+
+  display:flex;
+
+  gap:12px;
+
+  padding:18px;
+
+  border-top:
+  1px solid rgba(255,255,255,0.08);
+
+  background:
+  rgba(255,255,255,0.03);
+}
+/* ──────────────────────────────────────────
+   TOAST
+────────────────────────────────────────── */
+#toast {
+  position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(100px);
+  background:#1e1e1e; border:1px solid var(--border); color:white;
+  padding:12px 24px; border-radius:12px; font-size:14px; font-weight:500;
+  z-index:99999; transition:transform 0.35s cubic-bezier(0.22,1,0.36,1);
+  box-shadow:0 8px 30px rgba(0,0,0,0.5);
+}
+#toast.show { transform:translateX(-50%) translateY(0); }
+#toast.success { border-color:rgba(74,222,128,0.4); color:#4ade80; }
+#toast.error { border-color:rgba(255,107,107,0.4); color:#ff6b6b; }
+/*watchlist*/
+.watch-btn{
+  width:100%;
+  margin-top:12px;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  background:linear-gradient(135deg,#ff0055,#ff4d00);
+  color:white;
+  font-size:13px;
+  font-weight:600;
+  transition:0.3s;
+}
+
+.watch-btn:hover{
+  transform:scale(1.03);
+}
+.remove-btn{
+
+  width:100%;
+
+  margin-top:12px;
+
+  padding:10px;
+
+  border:none;
+
+  border-radius:10px;
+
+  cursor:pointer;
+
+  background:linear-gradient(
+    135deg,
+    #ff0033,
+    #cc0000
+  );
+
+  color:white;
+
+  font-size:13px;
+
+  font-weight:600;
+
+  transition:0.3s;
+}
+
+.remove-btn:hover{
+
+  transform:scale(1.03);
+
+}
+.remove-btn{
+
+  width:100%;
+
+  margin-top:12px;
+
+  padding:10px;
+
+  border:none;
+
+  border-radius:10px;
+
+  cursor:pointer;
+
+  background:linear-gradient(
+    135deg,
+    #ff0033,
+    #cc0000
+  );
+
+  color:white;
+
+  font-size:13px;
+
+  font-weight:600;
+
+  transition:0.3s;
+}
+
+.remove-btn:hover{
+
+  transform:scale(1.03);
+
+}
+</style>
+</head>
+<body>
+
+
+<section id="watchlist-section" style="padding:40px;display:none;">
+
+  <h2 style="margin-bottom:20px;">
+    ❤️ My Watchlist
+  </h2>
+
+  <div class="grid" id="watchlistGrid"></div>
+
+</section>
+
+<!-- ══════════════ AUTH OVERLAY ══════════════ -->
+<div id="auth-overlay">
+  <div class="auth-box" id="authBox">
+    <div class="auth-logo">CINE<span>MATCH</span></div>
+    <div class="auth-tagline">Your Premium AI Movie Database</div>
+
+    <!-- Tab Switcher -->
+    <div class="tab-switcher">
+      <button class="tab-btn active" id="signinTab" onclick="switchTab('signin')">Sign In</button>
+      <button class="tab-btn" id="signupTab" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- SIGN IN FORM -->
+    <div id="signinForm">
+      <div class="form-group">
+        <label>EMAIL ADDRESS</label>
+        <input type="email" id="siEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>PASSWORD</label>
+        <input type="password" id="siPassword" placeholder="••••••••" autocomplete="current-password">
+        <div class="auth-error" id="siError"></div>
+      </div>
+      <button class="auth-btn" onclick="handleSignIn()">Sign In to CineMatch</button>
+      <div class="auth-divider">or continue with</div>
+      <button class="social-btn" onclick="handleGuestLogin()">
+        <span>🎬</span> Continue as Guest
+      </button>
+    </div>
+
+    <!-- SIGN UP FORM -->
+    <div id="signupForm" style="display:none">
+      <div class="form-group">
+        <label>FULL NAME</label>
+        <input type="text" id="suName" placeholder="John Doe" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label>EMAIL ADDRESS</label>
+        <input type="email" id="suEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>PASSWORD</label>
+        <input type="password" id="suPassword" placeholder="Min. 6 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>CONFIRM PASSWORD</label>
+        <input type="password" id="suConfirm" placeholder="Repeat password" autocomplete="new-password">
+        <div class="auth-error" id="suError"></div>
+        <div class="auth-success" id="suSuccess"></div>
+      </div>
+      <button class="auth-btn" onclick="handleSignUp()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MAIN APP ══════════════ -->
+<div id="app">
+  <nav>
+    <div class="nav-logo">CINE<span>MATCH</span></div>
+    <div class="nav-links">
+      <button class="nav-btn"
+id="btnMood"
+onclick="showMoodDetector()">
+
+😊 Mood AI
+
+</button>
+      <button class="nav-btn"
+id="btnWatchlist"
+onclick="showWatchlist()">
+❤️ Watchlist
+</button>
+      <button class="nav-btn active" id="btnMovies" onclick="showSection('movies')">Discover</button>
+      <button class="nav-btn" id="btnChat" onclick="showSection('chat')">🤖 AI Expert</button>
+    </div>
+    <div class="user-area">
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-name" id="userName">User</div>
+      </div>
+      <button class="logout-btn" onclick="handleLogout()">Logout</button>
+    </div>
+  </nav>
+
+  <!-- MOVIES -->
+  <section id="movies-section">
+    
+</h2>
+
+<div class="grid" id="watchlistGrid"></div>
+    <div class="hero">
+      <h1>DISCOVER YOUR <span>NEXT</span> FILM</h1>
+      <p>AI-curated catalogue · Filter by genre · 2,000+ titles</p>
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search movies..." oninput="applyFilters()">
+        <button onclick="applyFilters()">Search</button>
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <span class="filter-label">Genre:</span>
+      <!-- chips injected by JS -->
+    </div>
+
+    <div class="results-meta" id="resultsMeta"></div>
+    <div class="grid" id="movieGrid"></div>
+    <div class="load-more-wrap">
+      <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()" style="display:none">Load More</button>
+    </div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="chat-section">
+
+  <iframe 
+    src="chatbot.html"
+    width="100%"
+    height="700"
+    style="border:none;border-radius:20px;">
+  </iframe>
+
+</section>
+ 
+</div>
+
+<div id="toast"></div>
+<section id="mood-section"
+style="display:none;padding:40px;">
+
+  <h1 style="
+  font-family:'Bebas Neue';
+  font-size:50px;
+  letter-spacing:3px;
+  margin-bottom:20px;">
+
+  😊 AI Mood Detection
+
+  </h1>
+
+  <video id="video"
+  width="420"
+  height="320"
+  autoplay
+  style="
+  border-radius:20px;
+  border:2px solid #333;">
+  </video>
+
+  <br><br>
+
+  <button class="auth-btn"
+  onclick="detectMood()">
+
+  Detect My Mood
+
+  </button>
+
+  <h2 id="moodResult"
+  style="margin-top:30px;">
+  </h2>
+
+  <div class="grid"
+  id="moodMovies"
+  style="margin-top:30px;">
+  </div>
+<h2 id="moodResult"></h2>
+
+<div class="grid"
+id="moodMovies">
+</div>
+
+</section>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════
+   SIMPLE AUTH (localStorage-backed)
+═══════════════════════════════════════════ */
+const USERS_KEY = 'cm_users';
+const SESSION_KEY = 'cm_session';
+
+function getUsers() { return JSON.parse(localStorage.getItem(USERS_KEY) || '{}'); }
+function saveUsers(u) { localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
+function getSession() { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
+function saveSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function clearSession() { localStorage.removeItem(SESSION_KEY); }
+
+function switchTab(tab) {
+  const isSignin = tab === 'signin';
+  document.getElementById('signinTab').classList.toggle('active', isSignin);
+  document.getElementById('signupTab').classList.toggle('active', !isSignin);
+  document.getElementById('signinForm').style.display = isSignin ? 'block' : 'none';
+  document.getElementById('signupForm').style.display = isSignin ? 'none' : 'block';
+}
+
+function showFieldError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+function showFieldSuccess(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function handleSignIn() {
+  const email = document.getElementById('siEmail').value.trim();
+  const pass  = document.getElementById('siPassword').value;
+  if (!email || !pass) return showFieldError('siError','Please fill in all fields.');
+  const users = getUsers();
+  if (!users[email]) return showFieldError('siError','No account found. Please sign up.');
+  if (users[email].password !== btoa(pass)) return showFieldError('siError','Incorrect password.');
+  saveSession({ email, name: users[email].name });
+  enterApp(users[email].name);
+}
+
+function handleSignUp() {
+  const name    = document.getElementById('suName').value.trim();
+  const email   = document.getElementById('suEmail').value.trim();
+  const pass    = document.getElementById('suPassword').value;
+  const confirm = document.getElementById('suConfirm').value;
+  if (!name || !email || !pass || !confirm) return showFieldError('suError','Please fill in all fields.');
+  if (!/\S+@\S+\.\S+/.test(email)) return showFieldError('suError','Enter a valid email.');
+  if (pass.length < 6) return showFieldError('suError','Password must be at least 6 characters.');
+  if (pass !== confirm) return showFieldError('suError','Passwords do not match.');
+  const users = getUsers();
+  if (users[email]) return showFieldError('suError','Account already exists. Sign in instead.');
+  users[email] = { name, password: btoa(pass) };
+  saveUsers(users);
+  showFieldSuccess('suSuccess','Account created! Signing you in…');
+  setTimeout(() => {
+    saveSession({ email, name });
+    enterApp(name);
+  }, 1200);
+}
+
+function handleGuestLogin() {
+  saveSession({ email: 'guest', name: 'Guest' });
+  enterApp('Guest');
+}
+
+function handleLogout() {
+  clearSession();
+  showToast('Signed out. See you next time! 👋', 'success');
+  setTimeout(() => location.reload(), 1200);
+}
+
+function enterApp(name) {
+  document.getElementById('auth-overlay').classList.add('hidden');
+  setTimeout(() => document.getElementById('auth-overlay').style.display = 'none', 500);
+  document.getElementById('app').style.display = 'block';
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userName').textContent = name;
+  initMovies();
+}
+
+/* ═══════════════════════════════════════════
+   AUTO-LOGIN (if session exists)
+═══════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+
+  loadFaceAPI();
+
+  const s = getSession();
+
+  if (s)
+    enterApp(s.name);
+
+  else
+    document.getElementById(
+      'auth-overlay'
+    ).style.opacity = '1';
+
+});
+
+/* ═══════════════════════════════════════════
+   MOVIE DATA & CATEGORIES
+═══════════════════════════════════════════ */
+const CATEGORIES = ['All','Action','Sci-Fi','Drama','Comedy','Horror','Thriller','Romance','Animation','Documentary','Crime','Fantasy'];
+
+const REAL_MOVIES = [
+  {title:'The Dark Knight',       genre:'Action',    rating:'9.0', poster:'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDp9QmSbmM949O9vBTp.jpg'},
+  {title:'Interstellar',          genre:'Sci-Fi',    rating:'8.6', poster:'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6vCU67oHaBP4f.jpg'},
+  {title:'Inception',             genre:'Sci-Fi',    rating:'8.8', poster:'https://image.tmdb.org/t/p/w500/edv5CZvRjS99vO6Yzn4IuS7vTLH.jpg'},
+  {title:'The Godfather',         genre:'Crime',     rating:'9.2', poster:'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsLegiokantuP.jpg'},
+  {title:'Pulp Fiction',          genre:'Crime',     rating:'8.9', poster:'https://image.tmdb.org/t/p/w500/plnlrtBUULT0rh3Xsjmpubiso3L.jpg'},
+  {title:'The Shawshank Redemption',genre:'Drama',   rating:'9.3', poster:'https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg'},
+  {title:'Forrest Gump',          genre:'Drama',     rating:'8.8', poster:'https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg'},
+  {title:'The Matrix',            genre:'Sci-Fi',    rating:'8.7', poster:'https://image.tmdb.org/t/p/w500/f89U3ADy4DV2mox8sPdCOgORSPt.jpg'},
+  {title:'Avengers: Endgame',     genre:'Action',    rating:'8.4', poster:'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg'},
+  {title:'Joker',                 genre:'Drama',     rating:'8.4', poster:'https://image.tmdb.org/t/p/w500/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg'},
+  {title:'Parasite',              genre:'Thriller',  rating:'8.6', poster:'https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg'},
+  {title:'Get Out',               genre:'Horror',    rating:'7.7', poster:'https://image.tmdb.org/t/p/w500/tFXcEccSQMVl9dQ3roC4d4bykzr.jpg'},
+  {title:'La La Land',            genre:'Romance',   rating:'8.0', poster:'https://image.tmdb.org/t/p/w500/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg'},
+  {title:'Toy Story',             genre:'Animation', rating:'8.3', poster:'https://image.tmdb.org/t/p/w500/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg'},
+  {title:'Coco',                  genre:'Animation', rating:'8.4', poster:'https://image.tmdb.org/t/p/w500/gGEsBPAijhVUFoiNpgZXqRVWJt2.jpg'},
+  {title:'Dune',                  genre:'Sci-Fi',    rating:'8.0', poster:'https://image.tmdb.org/t/p/w500/d5NXSklpcKDgRJO0YmzOkVbSb00.jpg'},
+  {title:'John Wick',             genre:'Action',    rating:'7.4', poster:'https://image.tmdb.org/t/p/w500/wXqWR7dHncNfZFVoUI6oFLxblNx.jpg'},
+  {title:'Everything Everywhere', genre:'Drama',     rating:'7.8', poster:'https://image.tmdb.org/t/p/w500/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg'},
+  {title:'Whiplash',              genre:'Drama',     rating:'8.5', poster:'https://image.tmdb.org/t/p/w500/lIv1QinFqz4dlp5U4lQ6HaiskOZ.jpg'},
+  {title:'Hereditary',            genre:'Horror',    rating:'7.3', poster:'https://image.tmdb.org/t/p/w500/p91p5E7mfLyNKE7UWpVHfPFqVLg.jpg'},
+];
+
+const genreSeeds = { Action:0, 'Sci-Fi':50, Drama:100, Comedy:150, Horror:200, Thriller:250, Romance:300, Animation:350, Documentary:400, Crime:450, Fantasy:500 };
+let ALL_MOVIES = [];
+let filtered = [];
+let displayed = 0;
+const PAGE_SIZE = 40;
+let activeCategory = 'All';
+let searchQuery = '';
+
+function buildMovies() {
+  ALL_MOVIES = [...REAL_MOVIES];
+  let idx = 0;
+  CATEGORIES.filter(c => c !== 'All').forEach(genre => {
+    const seed = genreSeeds[genre] || idx * 30;
+    for (let i = 0; i < 180; i++) {
+      ALL_MOVIES.push({
+        title: `${genre} Adventure Vol ${i + 1}`,
+        genre,
+        rating: (6.5 + Math.random() * 2.4).toFixed(1),
+        poster: `https://picsum.photos/seed/${seed + i}/400/600`
+      });
+      idx++;
+    }
+  });
+}
+
+function applyFilters() {
+  searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+  filtered = ALL_MOVIES.filter(m => {
+    const catMatch = activeCategory === 'All' || m.genre === activeCategory;
+    const searchMatch = !searchQuery || m.title.toLowerCase().includes(searchQuery) || m.genre.toLowerCase().includes(searchQuery);
+    return catMatch && searchMatch;
+  });
+  displayed = 0;
+  document.getElementById('movieGrid').innerHTML = '';
+  renderBatch();
+  updateMeta();
+}
+
+function updateMeta() {
+  const meta = document.getElementById('resultsMeta');
+  meta.innerHTML = `Showing <span>${Math.min(displayed, filtered.length)}</span> of <span>${filtered.length}</span> titles`;
+}
+
+function renderBatch() {
+  const grid = document.getElementById('movieGrid');
+  const batch = filtered.slice(displayed, displayed + PAGE_SIZE);
+  if (batch.length === 0 && displayed === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">🎬</div><p>No movies found. Try a different search or category.</p></div>`;
+    document.getElementById('loadMoreBtn').style.display = 'none';
+    return;
+  }
+  batch.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <img src="${m.poster}" class="card-img" alt="${m.title}" loading="lazy" onerror="this.src='https://picsum.photos/seed/${Math.random()*999|0}/400/600'">
+      <div class="card-badge">${m.genre}</div>
+      <div class="card-info">
+        <button class="watch-btn"
+onclick='addToWatchlist(${JSON.stringify(m)})'>
+❤️ Watchlist
+</button>
+        <div class="card-title" title="${m.title}">${m.title}</div>
+        <div class="card-meta">
+          <span class="card-genre">${m.genre}</span>
+          <span class="card-rating">⭐ ${m.rating}</span>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  displayed += batch.length;
+  document.getElementById('loadMoreBtn').style.display = displayed < filtered.length ? 'inline-block' : 'none';
+  updateMeta();
+}
+
+function loadMore() { renderBatch(); }
+
+function buildFilterBar() {
+  const bar = document.getElementById('filterBar');
+  bar.innerHTML = '<span class="filter-label">Genre:</span>';
+  CATEGORIES.forEach(cat => {
+    const chip = document.createElement('button');
+    chip.className = 'filter-chip' + (cat === 'All' ? ' active' : '');
+    chip.textContent = cat === 'All' ? '🎬 All' : cat;
+    chip.onclick = () => {
+      activeCategory = cat;
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      applyFilters();
+    };
+    bar.appendChild(chip);
+  });
+}
+
+function initMovies() { buildMovies(); buildFilterBar(); applyFilters(); }
+
+/* ═══════════════════════════════════════════
+   SECTION TOGGLE
+═══════════════════════════════════════════ */
+function showSection(s) {
+  document.getElementById('movies-section').style.display = s === 'movies' ? 'block' : 'none';
+  document.getElementById('chat-section').style.display   = s === 'chat'   ? 'flex'  : 'none';
+  document.getElementById('btnMovies').classList.toggle('active', s === 'movies');
+  document.getElementById('btnChat').classList.toggle('active',   s === 'chat');
+}
+
+/* ═══════════════════════════════════════════
+   AI CHAT (Anthropic API)
+═══════════════════════════════════════════ */
+const chatHistory = [];
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  addMsg(text, 'user');
+  chatHistory.push({ role:'user', content: text });
+
+  const typingEl = document.createElement('div');
+  typingEl.className = 'message bot';
+  typingEl.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+  typingEl.id = 'typing';
+  document.getElementById('chatBox').appendChild(typingEl);
+  scrollChat();
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: 'You are CineMatch AI, an enthusiastic and knowledgeable movie expert. Recommend films, share trivia, discuss cinematography, and help users discover great movies. Keep responses concise, warm and engaging. Use emojis occasionally.',
+        messages: chatHistory
+      })
+    });
+    const data = await resp.json();
+    document.getElementById('typing')?.remove();
+    const reply = data.content?.[0]?.text || "Sorry, I couldn't get a response. Try again!";
+    chatHistory.push({ role:'assistant', content: reply });
+    addMsg(reply, 'bot');
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    addMsg("⚠️ Connection error. Please try again.", 'bot');
+  }
+}
+
+function addMsg(text, sender) {
+  const msg = document.createElement('div');
+  msg.className = `message ${sender}`;
+  msg.innerHTML = text.replace(/\n/g, '<br>');
+  document.getElementById('chatBox').appendChild(msg);
+  scrollChat();
+}
+function scrollChat() {
+  const box = document.getElementById('chatBox');
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = type ? `show ${type}` : 'show';
+  setTimeout(() => t.className = '', 3000);
+}
+/* watchlist*/
+let watchlist =
+  JSON.parse(localStorage.getItem("watchlist")) || [];
+  function addToWatchlist(movie){
+
+  const exists = watchlist.find(
+    m => m.title === movie.title
+  );
+
+  if(exists){
+
+    showToast(
+      "Already in watchlist 🍿",
+      "error"
+    );
+
+    return;
+  }
+
+  watchlist.push(movie);
+
+  localStorage.setItem(
+    "watchlist",
+    JSON.stringify(watchlist)
+  );
+
+  showToast(
+    "Added to Watchlist ❤️",
+    "success"
+  );
+}
+function showWatchlist(){
+
+  // hide all sections
+  document.getElementById(
+    "movies-section"
+  ).style.display = "none";
+
+  document.getElementById(
+    "chat-section"
+  ).style.display = "none";
+
+  document.getElementById(
+    "mood-section"
+  ).style.display = "none";
+
+  // show watchlist
+  document.getElementById(
+    "watchlist-section"
+  ).style.display = "block";
+
+  const grid =
+    document.getElementById(
+      "watchlistGrid"
+    );
+
+  grid.innerHTML = "";
+
+  const saved =
+    JSON.parse(
+      localStorage.getItem("watchlist")
+    ) || [];
+
+  if(saved.length === 0){
+
+    grid.innerHTML = `
+      <h2 style="
+      color:white;
+      padding:30px;">
+      No movies in watchlist 🎬
+      </h2>
+    `;
+
+    return;
+  }
+
+  saved.forEach(movie => {
+
+    grid.innerHTML += `
+
+      <div class="card">
+
+        <img
+        src="${movie.poster}"
+        class="card-img"
+        onerror="this.src='https://picsum.photos/400/600'">
+
+        <div class="card-info">
+
+          <div class="card-title">
+            ${movie.title}
+          </div>
+
+          <div class="card-meta">
+
+            <span>${movie.genre}</span>
+
+            <span>⭐ ${movie.rating}</span>
+
+          </div>
+
+          <button
+          class="remove-btn"
+          onclick="removeWatchlist('${movie.title}')">
+
+          ❌ Remove
+
+          </button>
+
+        </div>
+
+      </div>
+
+    `;
+  });
+}
+async function loadFaceAPI(){
+
+  await faceapi.nets.tinyFaceDetector
+  .loadFromUri('./models');
+
+  await faceapi.nets.faceExpressionNet
+  .loadFromUri('./models');
+
+  console.log("AI Loaded");
+}
+window.addEventListener(
+'DOMContentLoaded',
+() => {
+
+  loadFaceAPI();
+
+});
+
+function removeWatchlist(title){
+
+  let watchlist =
+    JSON.parse(
+      localStorage.getItem("watchlist")
+    ) || [];
+
+  watchlist = watchlist.filter(
+    movie => movie.title !== title
+  );
+
+  localStorage.setItem(
+    "watchlist",
+    JSON.stringify(watchlist)
+  );
+
+  showWatchlist();
+
+  showToast(
+    "Removed from Watchlist ❌",
+    "success"
+  );
+}
+    
+  
+
+function addToWatchlist(movie){
+
+  let watchlist =
+    JSON.parse(
+      localStorage.getItem("watchlist")
+    ) || [];
+
+  const exists = watchlist.find(
+    m => m.title === movie.title
+  );
+
+  if(exists){
+
+    showToast(
+      "Already in Watchlist ❤️",
+      "error"
+    );
+
+    return;
+  }
+
+  watchlist.push(movie);
+
+  localStorage.setItem(
+    "watchlist",
+    JSON.stringify(watchlist)
+  );
+
+  showToast(
+    "Added to Watchlist ❤️",
+    "success"
+  );
+}
+/*remove*/
+function removeWatchlist(title){
+
+  let watchlist =
+    JSON.parse(
+      localStorage.getItem("watchlist")
+    ) || [];
+
+  watchlist = watchlist.filter(
+    movie => movie.title !== title
+  );
+
+  localStorage.setItem(
+    "watchlist",
+    JSON.stringify(watchlist)
+  );
+
+  showWatchlist();
+
+  showToast(
+    "Removed from Watchlist ❌",
+    "success"
+  );
+}
+/* mood */
+
+function showMoodDetector(){
+
+  document.getElementById(
+    "movies-section"
+  ).style.display = "none";
+
+  document.getElementById(
+    "chat-section"
+  ).style.display = "none";
+
+  document.getElementById(
+    "watchlist-section"
+  ).style.display = "none";
+
+  document.getElementById(
+    "mood-section"
+  ).style.display = "block";
+
+  startCamera();
+}
+async function startCamera(){
+
+  const video =
+    document.getElementById("video");
+
+  const stream =
+    await navigator.mediaDevices.getUserMedia({
+      video:true
+    });
+
+  video.srcObject = stream;
+}
+async function detectMood(){
+
+  const video =
+    document.getElementById("video");
+
+  const result =
+    document.getElementById("moodResult");
+
+  const grid =
+    document.getElementById("moodMovies");
+
+  result.innerHTML =
+    "🔍 Detecting mood...";
+
+  const detection =
+    await faceapi
+    .detectSingleFace(
+      video,
+      new faceapi.TinyFaceDetectorOptions()
+    )
+    .withFaceExpressions();
+
+  if(!detection){
+
+    result.innerHTML =
+      "❌ No face detected";
+
+    return;
+  }
+
+  const expressions =
+    detection.expressions;
+
+  const mood =
+    Object.keys(expressions)
+    .reduce((a,b)=>
+      expressions[a] > expressions[b]
+      ? a : b
+    );
+
+  result.innerHTML =
+    `😊 Detected Mood: ${mood}`;
+
+  let genre = "Drama";
+
+  if(mood === "happy")
+    genre = "Comedy";
+
+  else if(mood === "sad")
+    genre = "Drama";
+
+  else if(mood === "angry")
+    genre = "Action";
+
+  else if(mood === "surprised")
+    genre = "Sci-Fi";
+
+  else if(mood === "neutral")
+    genre = "Romance";
+
+  const movies =
+    ALL_MOVIES.filter(
+      m => m.genre === genre
+    ).slice(0,6);
+
+  grid.innerHTML = "";
+
+  movies.forEach(movie => {
+
+    grid.innerHTML += `
+
+      <div class="card">
+
+        <img
+        src="${movie.poster}"
+        class="card-img">
+
+        <div class="card-info">
+
+          <div class="card-title">
+            ${movie.title}
+          </div>
+
+          <div class="card-meta">
+
+            <span>${movie.genre}</span>
+
+            <span>⭐ ${movie.rating}</span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+  });
+}
+function recommendMoviesByEmotion(mood){
+
+  const grid =
+    document.getElementById(
+      "moodMovies"
+    );
+
+  grid.innerHTML = "";
+
+  let genre = "Drama";
+
+  if(mood === "happy")
+    genre = "Comedy";
+
+  if(mood === "sad")
+    genre = "Drama";
+
+  if(mood === "angry")
+    genre = "Action";
+
+  if(mood === "surprised")
+    genre = "Sci-Fi";
+
+  if(mood === "neutral")
+    genre = "Romance";
+
+  const movies =
+    ALL_MOVIES.filter(
+      m => m.genre === genre
+    ).slice(0,6);
+
+  movies.forEach(movie => {
+
+    grid.innerHTML += `
+
+      <div class="card">
+
+        <img
+        src="${movie.poster}"
+        class="card-img">
+
+        <div class="card-info">
+
+          <div class="card-title">
+            ${movie.title}
+          </div>
+
+          <div class="card-meta">
+
+            <span>${movie.genre}</span>
+
+            <span>⭐ ${movie.rating}</span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+  });
+}
+/* model */
+async function loadFaceAPI(){
+
+  await faceapi.nets.tinyFaceDetector
+  .loadFromUri('./models');
+
+  await faceapi.nets.faceExpressionNet
+  .loadFromUri('./models');
+
+  console.log("AI Loaded");
+}
+</script>
+</body>
+</html>
