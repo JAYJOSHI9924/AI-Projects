@@ -1,5 +1,3 @@
 project link :   
 
-
-https://portfolio-six-tau-5jn8ieiujb.vercel.app/
-
+https://ai-projects-pi.vercel.app/
